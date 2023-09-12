@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  db:
+    container_name: carmate-database
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-database:latest
+    healthcheck:
+      test: "PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U $$POSTGRES_USER $$POSTGRES_DB -c \"SELECT 1;\""
+      timeout: 1s
+      retries: 100
+      interval: 1s
+
+  api:
+    container_name: carmate-api
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-back:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    environment:
+      - API_NAME=CarmateAPI
+      - API_PORT=8080
+      - API_MODE=PROD
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+
+  front:
+    container_name: carmate-front
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-front:latest
+    depends_on:
+      - api
+    ports:
+      - 80:80
+    environment:
+      - API_URL=http://localhost:8080
+      - PORT=80
+      - ENV=PROD

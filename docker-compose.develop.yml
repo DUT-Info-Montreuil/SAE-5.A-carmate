@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  db:
+    container_name: carmate-database
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-database:latest
+    healthcheck:
+      test: "PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U $$POSTGRES_USER $$POSTGRES_DB -c \"SELECT 1;\""
+      timeout: 1s
+      retries: 100
+      interval: 1s
+    volumes:
+      - ./fixtures/01_insert_users.sql:/docker-entrypoint-initdb.d/01_insert_users.sql
+      - ./fixtures/02_insert_users_admin.sql:/docker-entrypoint-initdb.d/02_insert_users_admin.sql
+      - ./fixtures/03_insert_users_banned.sql:/docker-entrypoint-initdb.d/03_insert_users_banned.sql
+      - ./fixtures/04_insert_tokens.sql:/docker-entrypoint-initdb.d/04_insert_tokens.sql
+      - ./fixtures/05_insert_licenses.sql:/docker-entrypoint-initdb.d/05_insert_licenses.sql
+      - ./fixtures/06_insert_driver_profiles.sql:/docker-entrypoint-initdb.d/06_insert_driver_profiles.sql
+      - ./fixtures/07_insert_carpoolings.sql:/docker-entrypoint-initdb.d/07_insert_carpoolings.sql
+
+  api:
+    container_name: carmate-api
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-back:develop
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    environment:
+      - API_NAME=carmate-api
+      - API_PORT=8080
+      - API_MODE=PROD
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+
+  front:
+    container_name: carmate-front
+    image: ghcr.io/dut-info-montreuil/sae-5.a-carmate-front:develop
+    depends_on:
+      - api
+    ports:
+      - 80:80
+    environment:
+      - API_URL=http://localhost:8080
+      - PORT=80
+      - ENV=PROD
